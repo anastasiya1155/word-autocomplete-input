@@ -36,12 +36,21 @@ function App() {
   } = useCombobox({
     inputValue,
     onStateChange: async (state) => {
-      if (state.type === "__item_click__") {
+      console.log("onStateChange", state);
+      if (
+        state.type === "__item_click__" ||
+        // @ts-ignore
+        state.type === 10
+      ) {
         const words = inputValue.split(" ");
         words[words.length - 1] = state.selectedItem || words[words.length - 1];
         const newInputValue = words.join(" ");
         setInputValue(newInputValue);
-      } else if (state.type === "__input_change__") {
+      } else if (
+        state.type === "__input_change__" ||
+        // @ts-ignore
+        state.type === 6
+      ) {
         if (!state.inputValue) {
           return;
         }
@@ -87,13 +96,10 @@ function App() {
       }}
     >
       <div>
-        <label className="w-fit" {...getLabelProps()}>
-          Write smth:
-        </label>
+        <label {...getLabelProps()}>Write smth:</label>
         <div {...getComboboxProps()}>
           <input
-            placeholder="Best book ever"
-            className="w-full p-1.5"
+            placeholder="My search"
             {...getInputProps({}, { suppressRefError: true })}
             ref={inputRef}
             style={{ width: 500 }}
