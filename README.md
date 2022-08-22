@@ -2,6 +2,8 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+[Demo](https://anastasiya1155.github.io/word-autocomplete-input/)
+
 ## Available Scripts
 
 In the project directory, you can run:
