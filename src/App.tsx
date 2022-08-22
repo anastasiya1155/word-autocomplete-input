@@ -1,16 +1,8 @@
 import React from "react";
-import {
-  Autocomplete,
-  createTheme,
-  CssBaseline,
-  Grid,
-  TextField,
-  ThemeProvider,
-} from "@mui/material";
 import throttle from "lodash.throttle";
 import getCaretCoordinates from "textarea-caret";
+import { useCombobox } from "downshift";
 
-const theme = createTheme();
 const OPTION_LIST_MIN_WIDTH = 100;
 
 function sleep(delay = 0) {
@@ -28,117 +20,104 @@ const throttledRequest = throttle(
   { trailing: true, leading: false },
 );
 
-const MyPopper = ({ open, left, top, ...rest }: any) => {
-  return (
-    <div
-      style={{
-        top: top + 20,
-        left,
-        position: "absolute",
-        minWidth: 80,
-        minHeight: 20,
-      }}
-    >
-      {rest.children}
-    </div>
-  );
-};
-
 function App() {
   const [options, setOptions] = React.useState<string[]>([]);
   const [inputValue, setInputValue] = React.useState("");
-  const [value, setValue] = React.useState("");
   const [left, setLeft] = React.useState(0);
   const [top, setTop] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const {
+    isOpen,
+    getLabelProps,
+    getMenuProps,
+    getInputProps,
+    getComboboxProps,
+    getItemProps,
+  } = useCombobox({
+    inputValue,
+    onStateChange: async (state) => {
+      if (state.type === "__item_click__") {
+        const words = inputValue.split(" ");
+        words[words.length - 1] = state.selectedItem || words[words.length - 1];
+        const newInputValue = words.join(" ");
+        setInputValue(newInputValue);
+      } else if (state.type === "__input_change__") {
+        if (!state.inputValue) {
+          return;
+        }
+        setInputValue(state.inputValue);
+        const words = state.inputValue.split(" ");
+        const lastWord = words[words.length - 1];
+        if (lastWord && !/\s+/.test(lastWord)) {
+          await throttledRequest(lastWord, setOptions);
+        } else {
+          setOptions([]);
+        }
+        const input = inputRef.current;
+        if (input) {
+          const caret = state.inputValue.lastIndexOf(" ");
+          const caretPos = getCaretCoordinates(input, caret);
+          const rect = input.getBoundingClientRect();
 
-  const handleInput = React.useCallback(
-    async (event: React.SyntheticEvent, newInputValue: string) => {
-      setInputValue(newInputValue);
-      const words = newInputValue.split(" ");
-      const lastWord = words[words.length - 1];
-      if (lastWord && !/\s+/.test(lastWord)) {
-        await throttledRequest(lastWord, setOptions);
-      } else {
-        setOptions([]);
-      }
-      const input = inputRef.current;
-      if (input) {
-        const caret = newInputValue.lastIndexOf(" ");
-        const caretPos = getCaretCoordinates(input, caret);
-        const rect = input.getBoundingClientRect();
-
-        const newTop = caretPos.top + input.offsetTop;
-        const newLeft = Math.min(
-          caretPos.left + input.offsetLeft,
-          input.offsetLeft + rect.width - OPTION_LIST_MIN_WIDTH,
-        );
-        setTop(newTop);
-        setLeft(newLeft);
+          const newTop = caretPos.top + input.offsetTop;
+          const newLeft = Math.min(
+            caretPos.left + input.offsetLeft,
+            input.offsetLeft + rect.width - OPTION_LIST_MIN_WIDTH,
+          );
+          setTop(newTop);
+          setLeft(newLeft);
+        }
       }
     },
-    [],
-  );
-
-  const handleChange = React.useCallback(
-    async (event: React.SyntheticEvent, newValue: string) => {
-      const words = inputValue.split(" ");
-      words[words.length - 1] = newValue;
-      const newInputValue = words.join(" ");
-      setInputValue(newInputValue);
-      setValue(newInputValue);
+    items: options,
+    itemToString(item) {
+      return item || "";
     },
-    [inputValue],
-  );
+  });
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Grid
-        container
-        justifyContent="center"
-        alignItems="center"
-        sx={{ height: "100vh" }}
-      >
-        <Grid item sx={{ width: 500, position: "relative" }}>
-          <Autocomplete
-            freeSolo
-            disableClearable
-            filterOptions={(x) => x}
-            value={value}
-            onChange={handleChange}
-            inputValue={inputValue}
-            onInputChange={handleInput}
-            options={options}
-            fullWidth
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Search input"
-                InputProps={{
-                  ...params.InputProps,
-                  type: "search",
-                }}
-                inputRef={inputRef}
-              />
-            )}
-            PopperComponent={(props) => (
-              <MyPopper {...props} left={left} top={top} />
-            )}
+    <div
+      style={{
+        position: "relative",
+        width: "100vw",
+        height: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <div>
+        <label className="w-fit" {...getLabelProps()}>
+          Write smth:
+        </label>
+        <div {...getComboboxProps()}>
+          <input
+            placeholder="Best book ever"
+            className="w-full p-1.5"
+            {...getInputProps({}, { suppressRefError: true })}
+            ref={inputRef}
+            style={{ width: 500 }}
           />
-          {/*<span*/}
-          {/*  style={{*/}
-          {/*    left,*/}
-          {/*    top,*/}
-          {/*    position: "absolute",*/}
-          {/*    width: 5,*/}
-          {/*    height: 5,*/}
-          {/*    backgroundColor: "red",*/}
-          {/*  }}*/}
-          {/*/>*/}
-        </Grid>
-      </Grid>
-    </ThemeProvider>
+        </div>
+      </div>
+      <ul
+        {...getMenuProps()}
+        style={{
+          position: "absolute",
+          top,
+          left,
+          listStyle: "none",
+          padding: 0,
+        }}
+      >
+        {isOpen &&
+          options.map((item, index) => (
+            <li key={`${item}${index}`} {...getItemProps({ item, index })}>
+              <span>{item}</span>
+            </li>
+          ))}
+      </ul>
+    </div>
   );
 }
 
